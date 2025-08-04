@@ -2,8 +2,6 @@ import streamlit as st
 import openai
 
 st.set_page_config(page_title="CaseCoach AI", page_icon="💼", layout="wide")
-
-# --- API Key ---
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # --- Session State ---
@@ -11,8 +9,10 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "case_type" not in st.session_state:
     st.session_state.case_type = None
+if "interview_stage" not in st.session_state:
+    st.session_state.interview_stage = "opening"
 
-# --- GPT Call (simplified) ---
+# --- GPT Call ---
 def chat_with_gpt(messages, model="gpt-4o-mini"):
     response = openai.ChatCompletion.create(
         model=model,
@@ -21,20 +21,16 @@ def chat_with_gpt(messages, model="gpt-4o-mini"):
     )
     return response.choices[0].message.content
 
-# --- Initial Prompt Template ---
+# --- System Prompt ---
 def get_interviewer_prompt(case_type):
     return f"""
     You are an experienced consulting interviewer conducting a {case_type} case.
-    Follow these steps:
-    1. Present the problem statement like in a real case interview.
-    2. Wait for the user's response. Ask probing questions based on their structure.
-    3. Be strict but supportive. Do not give away answers.
-    4. At the end, summarize their performance and rate them on:
-       - Structure
-       - Math
-       - Creativity
-       - Communication
-    Keep your tone professional, like a McKinsey/Bain interviewer.
+    Rules:
+    - Do NOT provide full solutions. Only give one piece of information or one probing question at a time.
+    - Guide the candidate to structure their thinking. Ask follow-ups if their approach is unclear.
+    - If they ask for data, provide numbers that make sense for the case context.
+    - Keep the tone like a real consulting interviewer (supportive but challenging).
+    - When the candidate types 'I'm done', give a closing summary of their performance (Structure, Math, Creativity, Communication).
     """
 
 # --- UI ---
@@ -50,10 +46,9 @@ if st.session_state.case_type is None:
         st.session_state.messages = [
             {"role": "system", "content": get_interviewer_prompt(st.session_state.case_type)}
         ]
-        # Get the initial case statement from GPT
         opening_statement = chat_with_gpt(st.session_state.messages)
         st.session_state.messages.append({"role": "assistant", "content": opening_statement})
-        st.rerun()
+        st.session_state.interview_stage = "analysis"
 else:
     # Display previous messages
     for msg in st.session_state.messages[1:]:
@@ -63,6 +58,11 @@ else:
     # User input
     if prompt := st.chat_input("Your response:"):
         st.session_state.messages.append({"role": "user", "content": prompt})
+
+        # If user signals completion
+        if "done" in prompt.lower():
+            st.session_state.interview_stage = "conclusion"
+
         with st.chat_message("assistant"):
             full_response = chat_with_gpt(st.session_state.messages)
             st.markdown(full_response)
