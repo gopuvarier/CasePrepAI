@@ -47,8 +47,8 @@ if st.session_state.case_type is None:
         ["Profitability", "Market Entry", "Growth Strategy", "M&A"]
     )
     if st.button("Start Case"):
-    st.session_state.messages = [{"role": "system", "content": get_interviewer_prompt(st.session_state.case_type)}]
-    st.rerun()
+        st.session_state.messages = [{"role": "system", "content": get_interviewer_prompt(st.session_state.case_type)}]
+        st.rerun()
 else:
     # Display previous messages
     for msg in st.session_state.messages[1:]:
