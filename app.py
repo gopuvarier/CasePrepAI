@@ -1,8 +1,10 @@
 import streamlit as st
-import openai
+from openai import OpenAI
 
 st.set_page_config(page_title="CaseCoach AI", page_icon="💼", layout="wide")
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+# --- API Client ---
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # --- Session State ---
 if "messages" not in st.session_state:
@@ -14,7 +16,7 @@ if "interview_stage" not in st.session_state:
 
 # --- GPT Call ---
 def chat_with_gpt(messages, model="gpt-4o-mini"):
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=model,
         messages=messages,
         temperature=0.7
@@ -74,7 +76,7 @@ st.subheader("🧠 Quick Mental Math Drill")
 if st.button("Start Drill"):
     drill_prompt = "Give me 5 quick mental math questions relevant to consulting interviews with increasing difficulty."
     st.session_state.messages.append({"role": "user", "content": drill_prompt})
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=st.session_state.messages,
         temperature=0.7
