@@ -1,7 +1,5 @@
-
 import streamlit as st
 import openai
-import asyncio
 
 st.set_page_config(page_title="CaseCoach AI", page_icon="💼", layout="wide")
 
@@ -14,22 +12,14 @@ if "messages" not in st.session_state:
 if "case_type" not in st.session_state:
     st.session_state.case_type = None
 
-# --- GPT Call (async + streaming) ---
-async def chat_with_gpt(messages, model="gpt-4o-mini"):
-    response = await openai.ChatCompletion.acreate(
+# --- GPT Call (simplified) ---
+def chat_with_gpt(messages, model="gpt-4o-mini"):
+    response = openai.ChatCompletion.create(
         model=model,
         messages=messages,
-        temperature=0.7,
-        stream=True
+        temperature=0.7
     )
-    full_response = ""
-    async for chunk in response:
-        if "choices" in chunk and len(chunk["choices"]) > 0:
-            delta = chunk["choices"][0]["delta"].get("content", "")
-            if delta:
-                full_response += delta
-                yield delta
-    return full_response
+    return response.choices[0].message.content
 
 # --- Initial Prompt Template ---
 def get_interviewer_prompt(case_type):
@@ -52,8 +42,10 @@ st.title("💼 CaseCoach AI – Consulting Case Interview Practice")
 
 # Case type selection
 if st.session_state.case_type is None:
-    st.session_state.case_type = st.selectbox("Choose a case type to practice:", 
-                                              ["Profitability", "Market Entry", "Growth Strategy", "M&A"])
+    st.session_state.case_type = st.selectbox(
+        "Choose a case type to practice:", 
+        ["Profitability", "Market Entry", "Growth Strategy", "M&A"]
+    )
     if st.button("Start Case"):
         st.session_state.messages = [{"role": "system", "content": get_interviewer_prompt(st.session_state.case_type)}]
         st.experimental_rerun()
@@ -67,16 +59,8 @@ else:
     if prompt := st.chat_input("Your response:"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("assistant"):
-            response_placeholder = st.empty()
-            full_response = ""
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            async def run_chat():
-                async for token in chat_with_gpt(st.session_state.messages):
-                    nonlocal full_response
-                    full_response += token
-                    response_placeholder.markdown(full_response)
-            loop.run_until_complete(run_chat())
+            full_response = chat_with_gpt(st.session_state.messages)
+            st.markdown(full_response)
         st.session_state.messages.append({"role": "assistant", "content": full_response})
 
 # Quick Drill Section
